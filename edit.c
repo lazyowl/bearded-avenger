@@ -2,18 +2,31 @@
 #include <stdlib.h>
 #include <curses.h>
 #include <signal.h>
+#include <string.h>
 
 #define MAX	20
 
-void finish(int);
-void insert(int);
-void insert_pos(int, int, int);
-void delete();
-void delete_pos(int, int);
+static void finish(int);
+static void insert(int);
+static void insert_pos(int, int, int);
+static void delete();
+static void delete_pos(int, int);
+static void insert_newline();
+static void insert_newline_pos(int, int);
+static void delete_newline();
+static void delete_newline_pos(int);
 
-char mat[MAX][MAX];
-int linelengths[MAX];
-int ROW, COL, NUMROWS;
+static char mat[MAX][MAX];
+static int ROW, COL, NUMROWS;
+
+void render() {
+	clear();
+	int i;
+	for(i = 0; i < NUMROWS; i++)
+		mvaddstr(i, 0, mat[i]);
+	move(ROW, COL);
+	refresh();
+}
 
 void insert(int ch) {
 	insert_pos(ROW, COL, ch);
@@ -22,13 +35,11 @@ void insert(int ch) {
 
 void insert_pos(int r, int c, int ch) {
 	int i;
-	for(i = linelengths[r] - 1; i >= c; i--) {
-		mvaddch(r, i + 1, mat[r][i]);
+	int len = strlen(mat[r]);
+	for(i = len - 1; i >= c; i--)
 		mat[r][i + 1] = mat[r][i];
-	}
-	mvaddch(r, c, ch);
+	mat[r][len + 1] = '\0';
 	mat[r][c] = ch;
-	linelengths[r]++;
 }
 
 
@@ -39,55 +50,46 @@ void delete() {
 
 void delete_pos(int r, int c) {
 	int i;
-	mvdelch(r, c);
-	for(i = c; i < linelengths[r] - 1; i++) {
+	for(i = c; mat[r][i]; i++) {
 		mat[r][i] = mat[r][i + 1];
 	}
-	linelengths[r]--;
 }
 
-// inserts newline after row ROW
 void insert_newline() {
-	int i, j, initial_len;
-	for(i = NUMROWS - 1; i > ROW; i--) {
-		linelengths[i + 1] = linelengths[i];
-		for(j = 0; j < linelengths[i]; j++) {
-			mvaddch(i + 1, j, mat[i][j]);
-			mat[i + 1][j] = mat[i][j];
-		}
-	}
-	for(i = COL; i < linelengths[ROW]; i++) {
-		mvdelch(ROW, i);
-	}
-	linelengths[ROW + 1] = 0;
-	for(i = COL; i < linelengths[ROW]; i++) {
-		mvaddch(ROW + 1, i - COL, mat[ROW][i]);
-		mat[ROW + 1][i - COL] = mat[ROW][i];
-		linelengths[ROW + 1]++;
-	}
-	mvaddch(ROW, COL, '\n');
-	COL = 0;
-	NUMROWS++;
+	insert_newline_pos(ROW, COL);
 	ROW++;
+	COL = 0;
+}
+
+// inserts newline after row r
+void insert_newline_pos(int r, int c) {
+	int i, j;
+	char *breakpoint;
+
+	for(i = NUMROWS; i > r; i--)
+		strcpy(mat[i + 1], mat[i]);
+	breakpoint = &mat[r][c];
+	strcpy(mat[r + 1], breakpoint);
+	mat[r + 1][strlen(breakpoint)] = '\0';
+	mat[r][c] = '\0';
+	NUMROWS++;
 }
 
 
 // deletes newline after before ROW
 void delete_newline() {
-	int i, j;
-	// content of row ROW is appended to content of row ROW - 1
-	for(i = 0; i < linelengths[ROW]; i++) {
-		mat[ROW - 1][i + linelengths[ROW - 1]] = mat[ROW][i];
-	}
-	linelengths[ROW - 1] += linelengths[ROW];
-	for(i = ROW; i < NUMROWS - 1; i++) {
-		linelengths[i] = linelengths[i + 1];
-		for(j = 0; j < linelengths[i + 1]; j++) {
-			mat[i][j] = mat[i + 1][j];
-		}
-	}
-	COL = linelengths[ROW];
+	int temp = strlen(mat[ROW - 1]);
+	delete_newline_pos(ROW);
 	ROW--;
+	COL = temp;
+}
+
+// deletes new line at row r (and merges row with r - 1)
+void delete_newline_pos(int r) {
+	int i;
+	strcat(mat[r - 1], mat[r]);
+	for(i = r; i < NUMROWS; i++)
+		strcpy(mat[r], mat[r + 1]);
 	NUMROWS--;
 }
 
@@ -97,18 +99,10 @@ void finish(int sig) {
 	exit(0);
 }
 
-void debug() {
-	int i;
-	// printw("ROW=%d, linelengths=%d, NUMROWS=%d,", ROW, linelengths[ROW], NUMROWS);
-	// for(i = 0; i < NUMROWS; i++) printw("%d ", linelengths[i]);
-}
-
 int main() {
 	int ch;
 	int i;
 
-	for(i = 0; i < MAX; i++)
-		linelengths[i] = 0;
 	NUMROWS = 1;
 
 	signal(SIGINT, finish);
@@ -123,22 +117,24 @@ int main() {
 		ch = wgetch(stdscr);
 		switch(ch) {
 			case KEY_LEFT:
-				if(COL > 0) move(ROW, --COL);
+				if(COL > 0) COL--;
 				break;
 			case KEY_RIGHT:
-				if(COL < linelengths[ROW])
-					move(ROW, ++COL);
+				if(mat[ROW][COL] && COL + 1 < MAX) COL++;
 				break;
 			case KEY_UP:
 				if(ROW > 0) {
-					if(COL > linelengths[ROW - 1]) {
-						COL = linelengths[ROW - 1];
-					}
+					if(COL > strlen(mat[ROW - 1]))
+						COL = strlen(mat[ROW - 1]);
 					ROW--;
-					move(ROW, COL);
 				}
 				break;
 			case KEY_DOWN:
+				if(ROW < NUMROWS - 1) {
+					if(COL > strlen(mat[ROW + 1]))
+						COL = strlen(mat[ROW + 1]);
+					ROW++;
+				}
 				break;
 			case KEY_BACKSPACE:
 				if(COL == 0) {
@@ -148,20 +144,16 @@ int main() {
 					}
 				} else {
 					delete();
-					debug();
 				}
 				break;
 			default:
-				if(ch == '\r') {
-					// handle moving lines down
+				if(ch == '\r')
 					insert_newline();
-				} else {
+				else
 					insert(ch);
-					debug();
-				}
 				break;
 		}
-		refresh();
+		render();
 	}
 	getch();
 	endwin();
