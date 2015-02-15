@@ -3,8 +3,14 @@
 #include <ncurses.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 #define MAX	20
+#define BUF_SIZE	20	// read buffer size
 
 // key mappings
 #define KEY_NEWLINE	13

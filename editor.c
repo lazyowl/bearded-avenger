@@ -104,8 +104,44 @@ Line *new_line() {
 	return l;
 }
 
-int main() {
+// initialize cmtx using contents of file
+// TODO I assume that the line length < BUF_SIZE (i.e it will always read the entire line into buf) <= NEED TO CHANGE THIS
+int init_from_file(CMatrix *cmtx, char *filename) {
+	Line *current;
+	char buf[BUF_SIZE];
+	FILE *f = fopen(filename, "r");
+	if(!f) {
+		perror("open");
+		return EXIT_FAILURE;
+	}
+	cmtx->cursor_line_int = 0;
+	cmtx->cursor_col = 0;
+	cmtx->head = cmtx->cursor_line = current = cmtx->tail = new_line();
+
+	while(fgets(buf, BUF_SIZE, f)) {
+		strcpy(current->arr, buf);
+		current->next = new_line();
+		current->next->prev = current;
+		current = current->next;
+	}
+	// over-allocates one line (pointed to by current)
+	cmtx->tail = current->prev;
+	free(current);
+	cmtx->tail->next = NULL;
+	fclose(f);
+	return EXIT_SUCCESS;
+}
+
+int init_blank(CMatrix *cmtx) {
+	cmtx->head = cmtx->cursor_line = cmtx->tail = new_line();
+	cmtx->cursor_line_int = 0;
+	cmtx->cursor_col = 0;
+	return EXIT_SUCCESS;
+}
+
+int main(int argc, char **argv) {
 	int ch;
+	CMatrix matrix;
 
 	initscr();	// initialize
 	keypad(stdscr, TRUE);	// extra keys
@@ -114,12 +150,11 @@ int main() {
 	noecho();
 
 	// create matrix and first line
-	CMatrix matrix;
-	matrix.head = new_line();
-	matrix.tail = matrix.head;
-	matrix.cursor_line = matrix.head;
-	matrix.cursor_line_int = 0;
-	matrix.cursor_col = 0;
+	if(argc == 1)
+		init_blank(&matrix);
+	else
+		init_from_file(&matrix, argv[1]);
+	render(&matrix);
 
 	while(1) {
 		ch = wgetch(stdscr);
