@@ -124,8 +124,6 @@ int main() {
 	while(1) {
 		ch = wgetch(stdscr);
 		switch(ch) {
-			case ESC_KEY:
-				finish(&matrix);
 			case KEY_LEFT:
 				// move left if possible
 				if(matrix.cursor_col > 0)
@@ -139,7 +137,7 @@ int main() {
 			case KEY_UP:
 				// move up unless already on first line
 				if(matrix.cursor_line != matrix.head) {
-					if(matrix.cursor_col > strlen(matrix.cursor_line->prev->arr));
+					if(matrix.cursor_col > strlen(matrix.cursor_line->prev->arr))
 						matrix.cursor_col = strlen(matrix.cursor_line->prev->arr);
 					matrix.cursor_line = matrix.cursor_line->prev;
 					matrix.cursor_line_int--;
@@ -148,7 +146,7 @@ int main() {
 			case KEY_DOWN:
 				// move down unless nothing below
 				if(matrix.cursor_line->next) {
-					if(matrix.cursor_col > strlen(matrix.cursor_line->next->arr));
+					if(matrix.cursor_col > strlen(matrix.cursor_line->next->arr))
 						matrix.cursor_col = strlen(matrix.cursor_line->next->arr);
 					matrix.cursor_line = matrix.cursor_line->next;
 					matrix.cursor_line_int++;
@@ -165,13 +163,27 @@ int main() {
 					delete_before_cursor(&matrix);
 				}
 				break;
-			default:
+			case KEY_ESC:
+				finish(&matrix);
+				break;
+			case KEY_NEWLINE:
 				// if char is new line, handle it separately
-				if(ch == NEWLINE_KEY) {
-					insert_newline_at_cursor(&matrix);
-				} else {
-					insert_at_cursor(&matrix, ch);
-				}
+				insert_newline_at_cursor(&matrix);
+				break;
+			case KEY_HOME:
+				// beginning
+				matrix.cursor_col = 0;
+				break;
+			case KEY_END:
+				// end
+				matrix.cursor_col = strlen(matrix.cursor_line->arr);
+				break;
+			case KEY_PPAGE:
+			case KEY_NPAGE:
+				// ignore for now
+				break;
+			default:
+				insert_at_cursor(&matrix, ch);
 				break;
 		}
 		render(&matrix);

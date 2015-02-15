@@ -4,9 +4,11 @@
 #include <signal.h>
 #include <string.h>
 
-#define NEWLINE_KEY '\r'
 #define MAX	20
-#define ESC_KEY	27
+
+// key mappings
+#define KEY_NEWLINE	13
+#define KEY_ESC	27
 
 typedef struct Line {
 	char arr[MAX];
