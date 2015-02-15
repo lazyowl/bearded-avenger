@@ -1,2 +1,2 @@
 all:
-	gcc edit.c -lncurses
+	gcc -Wall editor.c -lncurses
