@@ -6,9 +6,10 @@ Foam is an extremely basic text editor written in C using ncurses.
 * read and edit from file
 
 #### To Do
-* allow for larger line lengths
 * save to file
+* add scrolling
 
 #### Design
 The editor now uses a doubly linked list of Line structure pointers.
-However, for now, within each Line is an array of fixed size.
+Each line contains a dynamically allocated array for storing text.
+Nothing fancy about the data structures being used (not optimized in any way).
