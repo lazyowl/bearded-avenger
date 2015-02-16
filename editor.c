@@ -10,12 +10,19 @@ void render(CMatrix *cmtx) {
 		iter = iter->next;
 	}
 	move(cmtx->cursor_line_int, cmtx->cursor_col);
+	refresh();
 }
 
 // inserts character at cursor
 void insert_at_cursor(CMatrix *cmtx, int ch) {
 	int i;
 	int len = strlen(cmtx->cursor_line->arr);
+
+	// resize arr if necessary
+	if(len >= cmtx->cursor_line->exp * BUF_SIZE - 1) {
+		cmtx->cursor_line->exp *= 2;
+		cmtx->cursor_line->arr = (char *)realloc(cmtx->cursor_line->arr, cmtx->cursor_line->exp * BUF_SIZE);
+	}
 
 	// shift all characters one ahead and add \0
 	for(i = len - 1; i >= cmtx->cursor_col; i--)
@@ -47,7 +54,12 @@ void insert_newline_at_cursor(CMatrix *cmtx) {
 	extra_line->prev = cmtx->cursor_line;
 	cmtx->cursor_line->next = extra_line;
 
+	// make sure that the new line has enough space and then:
 	// copy over content and set \0 to override the content of the previous line
+	while(strlen(breakpoint) > extra_line->exp * BUF_SIZE) {
+		extra_line->exp *= 2;
+		extra_line->arr = (char *)realloc(extra_line->arr, extra_line->exp * BUF_SIZE);
+	}
 	strcpy(extra_line->arr, breakpoint);
 	extra_line->arr[strlen(breakpoint)] = '\0';
 	cmtx->cursor_line->arr[cmtx->cursor_col] = '\0';
@@ -75,6 +87,7 @@ void delete_newline_at_cursor(CMatrix *cmtx) {
 	// update previous line to point next to next line
 	cmtx->cursor_line->prev->next = cmtx->cursor_line->next;
 
+	free(cmtx->cursor_line->arr);
 	free(cmtx->cursor_line);
 
 	// update cursor
@@ -89,6 +102,7 @@ void finish(CMatrix *cmtx) {
 	Line *current = cmtx->head, *temp;
 	while(current) {
 		temp = current->next;
+		free(current->arr);
 		free(current);
 		current = temp;
 	}
@@ -100,14 +114,16 @@ void finish(CMatrix *cmtx) {
 Line *new_line() {
 	Line *l = (Line *)malloc(sizeof(Line));
 	l->next = l->prev = NULL;
+	l->exp = 1;
+	l->arr = (char *)malloc(sizeof(char) * BUF_SIZE);
 	l->arr[0] = '\0';
 	return l;
 }
 
 // initialize cmtx using contents of file
-// TODO I assume that the line length < BUF_SIZE (i.e it will always read the entire line into buf) <= NEED TO CHANGE THIS
 int init_from_file(CMatrix *cmtx, char *filename) {
 	Line *current;
+	int len;
 	char buf[BUF_SIZE];
 	FILE *f = fopen(filename, "r");
 	if(!f) {
@@ -118,14 +134,25 @@ int init_from_file(CMatrix *cmtx, char *filename) {
 	cmtx->cursor_col = 0;
 	cmtx->head = cmtx->cursor_line = current = cmtx->tail = new_line();
 
-	while(fgets(buf, BUF_SIZE, f)) {
-		strcpy(current->arr, buf);
-		current->next = new_line();
-		current->next->prev = current;
-		current = current->next;
+	while(fgets(buf, BUF_SIZE / 2, f)) {
+		len = strlen(buf);
+		if(strlen(current->arr) + len >= current->exp * BUF_SIZE) {
+			current->exp *= 2;
+			current->arr = (char *)realloc(current->arr, current->exp * BUF_SIZE);
+		}
+		strcat(current->arr, buf);
+		if(buf[len - 1] == '\n') {
+			current->arr[strlen(current->arr) - 1] = '\0';	// remove newline from matrix representation
+			current->next = new_line();
+			current->next->prev = current;
+			current = current->next;
+			break;
+		}
+		// otherwise continue
 	}
-	// over-allocates one line (pointed to by current)
+
 	cmtx->tail = current->prev;
+	free(current->arr);
 	free(current);
 	cmtx->tail->next = NULL;
 	fclose(f);
@@ -166,7 +193,7 @@ int main(int argc, char **argv) {
 				break;
 			case KEY_RIGHT:
 				// move right if we haven't reached the end of the text or MAX
-				if(matrix.cursor_line->arr[matrix.cursor_col] && matrix.cursor_col + 1 < MAX)
+				if(matrix.cursor_line->arr[matrix.cursor_col] && matrix.cursor_col + 1 < strlen(matrix.cursor_line->arr))
 					matrix.cursor_col++;
 				break;
 			case KEY_UP:

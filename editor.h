@@ -9,7 +9,6 @@
 #include <fcntl.h>
 
 
-#define MAX	20
 #define BUF_SIZE	20	// read buffer size
 
 // key mappings
@@ -17,7 +16,8 @@
 #define KEY_ESC	27
 
 typedef struct Line {
-	char arr[MAX];
+	char *arr;
+	int exp;	// stores the power of 2 currently reached for realloc
 	struct Line *next;
 	struct Line *prev;
 } Line;
