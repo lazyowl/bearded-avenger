@@ -5,11 +5,16 @@ void render(CMatrix *cmtx) {
 	int i = 0;
 	clear();
 	Line *iter = cmtx->head;
+	for(; i < cmtx->y_offset; i++)
+		iter = iter->next;
+	i = 0;
 	while(iter) {
 		mvaddstr(i++, 0, iter->arr);
 		iter = iter->next;
 	}
-	move(cmtx->cursor_line_int, cmtx->cursor_col);
+	// the cursor needs to be positioned relative to the screen, not the actual text
+	// in other words, we need to map the line number in the text (cursor_line_int) to a screen line number
+	move(cmtx->cursor_line_int - cmtx->y_offset, cmtx->cursor_col);
 	refresh();
 }
 
@@ -73,6 +78,9 @@ void insert_newline_at_cursor(CMatrix *cmtx) {
 	cmtx->cursor_line = cmtx->cursor_line->next;
 	cmtx->cursor_line_int++;
 	cmtx->cursor_col = 0;
+
+	if(cmtx->cursor_line_int - cmtx->y_offset > LINES - 1)
+		cmtx->y_offset++;
 }
 
 // delete newline
@@ -132,6 +140,7 @@ int init_from_file(CMatrix *cmtx, char *filename) {
 	}
 	cmtx->cursor_line_int = 0;
 	cmtx->cursor_col = 0;
+	cmtx->y_offset = 0;
 	cmtx->head = cmtx->cursor_line = current = cmtx->tail = new_line();
 
 	while(fgets(buf, BUF_SIZE / 2, f)) {
@@ -163,6 +172,7 @@ int init_blank(CMatrix *cmtx) {
 	cmtx->head = cmtx->cursor_line = cmtx->tail = new_line();
 	cmtx->cursor_line_int = 0;
 	cmtx->cursor_col = 0;
+	cmtx->y_offset = 0;
 	return EXIT_SUCCESS;
 }
 
@@ -203,6 +213,7 @@ int main(int argc, char **argv) {
 						matrix.cursor_col = strlen(matrix.cursor_line->prev->arr);
 					matrix.cursor_line = matrix.cursor_line->prev;
 					matrix.cursor_line_int--;
+					if(matrix.cursor_line_int < matrix.y_offset) matrix.y_offset--;
 				}
 				break;
 			case KEY_DOWN:
@@ -212,6 +223,8 @@ int main(int argc, char **argv) {
 						matrix.cursor_col = strlen(matrix.cursor_line->next->arr);
 					matrix.cursor_line = matrix.cursor_line->next;
 					matrix.cursor_line_int++;
+					if(matrix.cursor_line_int - matrix.y_offset > LINES - 1)
+						matrix.y_offset++;
 				}
 				break;
 			case KEY_BACKSPACE:

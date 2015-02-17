@@ -26,6 +26,7 @@ typedef struct {
 	Line *cursor_line;
 	int cursor_line_int;
 	int cursor_col;
+	int y_offset;
 	Line *head;
 	Line *tail;
 } CMatrix;
