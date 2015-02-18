@@ -59,12 +59,11 @@ void insert_newline_at_cursor(CMatrix *cmtx) {
 	extra_line->prev = cmtx->cursor_line;
 	cmtx->cursor_line->next = extra_line;
 
-	// make sure that the new line has enough space and then:
+	// make sure that the new line has enough space (account for the \0, hence using >= and not >) and then:
 	// copy over content and set \0 to override the content of the previous line
-	while(strlen(breakpoint) > extra_line->exp * BUF_SIZE) {
+	while(strlen(breakpoint) >= extra_line->exp * BUF_SIZE)
 		extra_line->exp *= 2;
-		extra_line->arr = (char *)realloc(extra_line->arr, extra_line->exp * BUF_SIZE);
-	}
+	extra_line->arr = (char *)realloc(extra_line->arr, extra_line->exp * BUF_SIZE);
 	strcpy(extra_line->arr, breakpoint);
 	extra_line->arr[strlen(breakpoint)] = '\0';
 	cmtx->cursor_line->arr[cmtx->cursor_col] = '\0';
