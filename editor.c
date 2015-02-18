@@ -56,6 +56,8 @@ void insert_newline_at_cursor(CMatrix *cmtx) {
 	// create a new line and insert into linked list
 	Line *extra_line = new_line();
 	extra_line->next = cmtx->cursor_line->next;
+	if(cmtx->cursor_line->next)
+		cmtx->cursor_line->next->prev = extra_line;
 	extra_line->prev = cmtx->cursor_line;
 	cmtx->cursor_line->next = extra_line;
 
@@ -101,6 +103,9 @@ void delete_newline_at_cursor(CMatrix *cmtx) {
 	cmtx->cursor_line = temp;
 	cmtx->cursor_line_int--;
 	cmtx->cursor_col = prev_line_length;
+
+	if(cmtx->cursor_line_int < cmtx->y_offset && cmtx->y_offset > 0)
+		cmtx->y_offset--;
 }
 
 // clean up
