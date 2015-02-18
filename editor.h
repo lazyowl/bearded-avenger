@@ -36,5 +36,8 @@ void insert_at_cursor(CMatrix *, int);
 void delete_before_cursor(CMatrix *);
 void insert_newline_at_cursor(CMatrix *);
 void delete_newline_at_cursor(CMatrix *);
+void move_cursor_up(CMatrix *);
+void move_cursor_down(CMatrix *);
+void move_cursor_to(CMatrix *, int, int);
 void finish(CMatrix *);
 Line *new_line();

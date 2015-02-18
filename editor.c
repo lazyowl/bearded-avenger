@@ -108,6 +108,39 @@ void delete_newline_at_cursor(CMatrix *cmtx) {
 		cmtx->y_offset--;
 }
 
+// move cursor up
+void move_cursor_up(CMatrix *cmtx) {
+	if(cmtx->cursor_col > strlen(cmtx->cursor_line->prev->arr))
+		cmtx->cursor_col = strlen(cmtx->cursor_line->prev->arr);
+	cmtx->cursor_line = cmtx->cursor_line->prev;
+	cmtx->cursor_line_int--;
+	if(cmtx->cursor_line_int < cmtx->y_offset) cmtx->y_offset--;
+}
+
+
+// move cursor down
+void move_cursor_down(CMatrix *cmtx) {
+	if(cmtx->cursor_col > strlen(cmtx->cursor_line->next->arr))
+		cmtx->cursor_col = strlen(cmtx->cursor_line->next->arr);
+	cmtx->cursor_line = cmtx->cursor_line->next;
+	cmtx->cursor_line_int++;
+	if(cmtx->cursor_line_int - cmtx->y_offset > LINES - 1)
+		cmtx->y_offset++;
+}
+
+void move_cursor_to(CMatrix *cmtx, int row, int col) {
+	if(row < 0 || col < 0) return;
+	while(cmtx->cursor_line_int > row) {
+		cmtx->cursor_line_int--;
+		cmtx->cursor_line = cmtx->cursor_line->prev;
+	}
+	while(cmtx->cursor_line_int < row) {
+		cmtx->cursor_line_int++;
+		cmtx->cursor_line = cmtx->cursor_line->next;
+	}
+	cmtx->cursor_col = col;
+}
+
 // clean up
 void finish(CMatrix *cmtx) {
 	// free data structure
@@ -180,93 +213,3 @@ int init_blank(CMatrix *cmtx) {
 	return EXIT_SUCCESS;
 }
 
-int main(int argc, char **argv) {
-	int ch;
-	CMatrix matrix;
-
-	initscr();	// initialize
-	keypad(stdscr, TRUE);	// extra keys
-	cbreak();
-	nonl();
-	noecho();
-
-	// create matrix and first line
-	if(argc == 1)
-		init_blank(&matrix);
-	else
-		init_from_file(&matrix, argv[1]);
-	render(&matrix);
-
-	while(1) {
-		ch = wgetch(stdscr);
-		switch(ch) {
-			case KEY_LEFT:
-				// move left if possible
-				if(matrix.cursor_col > 0)
-					matrix.cursor_col--;
-				break;
-			case KEY_RIGHT:
-				// move right if we haven't reached the end of the text or MAX
-				if(matrix.cursor_line->arr[matrix.cursor_col] && matrix.cursor_col + 1 < strlen(matrix.cursor_line->arr))
-					matrix.cursor_col++;
-				break;
-			case KEY_UP:
-				// move up unless already on first line
-				if(matrix.cursor_line != matrix.head) {
-					if(matrix.cursor_col > strlen(matrix.cursor_line->prev->arr))
-						matrix.cursor_col = strlen(matrix.cursor_line->prev->arr);
-					matrix.cursor_line = matrix.cursor_line->prev;
-					matrix.cursor_line_int--;
-					if(matrix.cursor_line_int < matrix.y_offset) matrix.y_offset--;
-				}
-				break;
-			case KEY_DOWN:
-				// move down unless nothing below
-				if(matrix.cursor_line->next) {
-					if(matrix.cursor_col > strlen(matrix.cursor_line->next->arr))
-						matrix.cursor_col = strlen(matrix.cursor_line->next->arr);
-					matrix.cursor_line = matrix.cursor_line->next;
-					matrix.cursor_line_int++;
-					if(matrix.cursor_line_int - matrix.y_offset > LINES - 1)
-						matrix.y_offset++;
-				}
-				break;
-			case KEY_BACKSPACE:
-				// if at beginning of line, handle moving all lines up (unless cursor_row == 0)
-				// else just delete
-				if(matrix.cursor_col == 0) {
-					if(matrix.cursor_line != matrix.head) {
-						delete_newline_at_cursor(&matrix);
-					}
-				} else {
-					delete_before_cursor(&matrix);
-				}
-				break;
-			case KEY_ESC:
-				finish(&matrix);
-				break;
-			case KEY_NEWLINE:
-				// if char is new line, handle it separately
-				insert_newline_at_cursor(&matrix);
-				break;
-			case KEY_HOME:
-				// beginning
-				matrix.cursor_col = 0;
-				break;
-			case KEY_END:
-				// end
-				matrix.cursor_col = strlen(matrix.cursor_line->arr);
-				break;
-			case KEY_PPAGE:
-			case KEY_NPAGE:
-				// ignore for now
-				break;
-			default:
-				insert_at_cursor(&matrix, ch);
-				break;
-		}
-		render(&matrix);
-	}
-	endwin();
-	return 0;
-}
