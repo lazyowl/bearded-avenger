@@ -1,3 +1,4 @@
+// simulates performing the key strokes as indicated in the specified file
 #include <stdio.h>
 #include <stdlib.h>
 #include "../editor.h"
@@ -78,10 +79,9 @@ void insert_string(CMatrix *cmtx, char str[]) {
 }
 
 void print_matrix(CMatrix *cmtx) {
-	int i = 0;
 	Line *current = cmtx->head;
 	while(current) {
-		printf("%d:%s\n", i++, current->arr);
+		printf("%s\n", current->arr);
 		current = current->next;
 	}
 }
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 	}
 
 	print_matrix(&matrix);
-	printf("cursor:(%d, %d)\n", matrix.cursor_line_int, matrix.cursor_col);
+	printf("(%d, %d)\n", matrix.cursor_line_int, matrix.cursor_col);
 	return 0;
 }
 
