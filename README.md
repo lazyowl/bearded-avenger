@@ -3,7 +3,7 @@ Foam is an extremely basic text editor written in C using ncurses.
 
 #### Features
 * write stuff on the screen
-* read and edit from file
+* read and edit from file (buggy)
 * basic scrolling works
 
 #### To Do

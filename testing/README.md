@@ -6,7 +6,9 @@ This will create a small executable (called `simulator`) which will parse an inp
 Generally, the input test file must be named `inX` where `X` is the number of the test. Similarly, its corresponding output file must be named `outX`.
 
 #### Syntax of `in*` files
-```
+
+LOAD <path> : load contents of file (if included, this **must** be the first instruction); the cursor remains at the beginning of the file.
+
 INSSTR <string> : insert given string at cursor
 
 BP : backspace
@@ -22,7 +24,7 @@ MVCRSRDN : move the cursor down
 MVCRSRRT : move the cursor right
 
 MVCRSRLFT : move the cursor left
-```
+
 
 #### Syntax of `out*` files
 Each line corresponds to a row in the matrix; first line &rarr; row 0, second line &rarr; row 1, etc.  

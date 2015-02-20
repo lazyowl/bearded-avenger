@@ -40,4 +40,6 @@ void move_cursor_up(CMatrix *);
 void move_cursor_down(CMatrix *);
 void move_cursor_to(CMatrix *, int, int);
 void finish(CMatrix *);
+int init_blank(CMatrix *);
+int init_from_file(CMatrix *, char *);
 Line *new_line();

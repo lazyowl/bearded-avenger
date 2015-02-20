@@ -7,7 +7,7 @@
 #define MAX	10
 
 typedef enum {
-	INSSTR, BP, INSNL, MVCRSR, MVCRSRUP, MVCRSRDN, MVCRSRRT, MVCRSRLFT, INVALID
+	LOAD, INSSTR, BP, INSNL, MVCRSR, MVCRSRUP, MVCRSRDN, MVCRSRRT, MVCRSRLFT, INVALID
 } Op;
 
 typedef union Arg {
@@ -36,6 +36,7 @@ int parse_file(char *filename, Command commands[]) {
 		if(piece1[0] == '#')
 			continue;
 		commands[i].op = INVALID;
+		if(strcmp(piece1, "LOAD") == 0) commands[i].op = LOAD;
 		if(strcmp(piece1, "INSSTR") == 0) commands[i].op = INSSTR;
 		if(strcmp(piece1, "MVCRSR") == 0) commands[i].op = MVCRSR;
 		if(strcmp(piece1, "MVCRSRUP") == 0) commands[i].op = MVCRSRUP;
@@ -46,6 +47,10 @@ int parse_file(char *filename, Command commands[]) {
 		if(strcmp(piece1, "INSNL") == 0) commands[i].op = INSNL;
 
 		switch(commands[i].op) {
+			case LOAD:
+				piece2 = strtok(NULL, " ");
+				strcpy(commands[i].arg.str, piece2);
+				break;
 			case INSSTR:
 				piece2 = strtok(NULL, " ");
 				strcpy(commands[i].arg.str, piece2);
@@ -87,7 +92,7 @@ void print_matrix(CMatrix *cmtx) {
 }
 
 int main(int argc, char **argv) {
-	int count, i;
+	int count, i = 0;
 	CMatrix matrix;
 
 	if(argc != 2) return 1;
@@ -96,7 +101,15 @@ int main(int argc, char **argv) {
 
 	Command commands[MAX];
 	count = parse_file(argv[1], commands);
-	for(i = 0; i < count; i++) {
+
+	if(count > 0) {
+		if(commands[i].op == LOAD) {
+			init_from_file(&matrix, commands[i].arg.str);	
+			i++;
+		}
+	}
+
+	for(; i < count; i++) {
 		switch(commands[i].op) {
 			case INSSTR:
 				insert_string(&matrix, commands[i].arg.str);
