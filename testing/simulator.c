@@ -115,13 +115,7 @@ int main(int argc, char **argv) {
 				insert_string(&matrix, commands[i].arg.str);
 				break;
 			case BP:
-				if(matrix.cursor_col == 0) {
-					if(matrix.cursor_line != matrix.head) {
-						delete_newline_at_cursor(&matrix);
-					} 
-				} else {
-					delete_before_cursor(&matrix);
-				}
+				delete_before_cursor(&matrix);
 				break;
 			case INSNL:
 				insert_newline_at_cursor(&matrix);
@@ -130,22 +124,16 @@ int main(int argc, char **argv) {
 				move_cursor_to(&matrix, commands[i].arg.num1, commands[i].arg.num2);
 				break;
 			case MVCRSRUP:
-				if(matrix.cursor_line != matrix.head) {
-					move_cursor_up(&matrix);
-				}
+				move_cursor_up(&matrix);
 				break;
 			case MVCRSRDN:
-				if(matrix.cursor_line->next) {
-					move_cursor_down(&matrix);
-				}
+				move_cursor_down(&matrix);
 				break;
 			case MVCRSRLFT:
-				if(matrix.cursor_col > 0)
-					matrix.cursor_col--;
+				move_cursor_left(&matrix);
 				break;
 			case MVCRSRRT:
-				if(matrix.cursor_line->arr[matrix.cursor_col] && matrix.cursor_col < strlen(matrix.cursor_line->arr))
-					matrix.cursor_col++;
+				move_cursor_right(&matrix);
 				break;
 			default:
 				printf("Invalid command!\n");
@@ -154,7 +142,7 @@ int main(int argc, char **argv) {
 	}
 
 	print_matrix(&matrix);
-	printf("(%d, %d)\n", matrix.cursor_line_int, matrix.cursor_col);
+	printf("(%d, %d)\n", matrix.cursor_row, matrix.cursor_col);
 	return 0;
 }
 

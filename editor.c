@@ -1,11 +1,11 @@
 #include "editor.h"
 
 // main function which updates screen
-void render(CMatrix *cmtx) {
+void render(TMatrix *tmtx) {
 	int i = 0;
 	clear();
-	Line *iter = cmtx->head;
-	for(; i < cmtx->y_offset; i++)
+	Line *iter = tmtx->head;
+	for(; i < tmtx->y_offset; i++)
 		iter = iter->next;
 	i = 0;
 	while(iter) {
@@ -13,53 +13,52 @@ void render(CMatrix *cmtx) {
 		iter = iter->next;
 	}
 	// the cursor needs to be positioned relative to the screen, not the actual text
-	// in other words, we need to map the line number in the text (cursor_line_int) to a screen line number
-	move(cmtx->cursor_line_int - cmtx->y_offset, cmtx->cursor_col);
+	// in other words, we need to map the line number in the text (cursor_row) to a screen line number
+	move(tmtx->cursor_row - tmtx->y_offset, tmtx->cursor_col);
 	refresh();
 }
 
 // inserts character at cursor
-void insert_at_cursor(CMatrix *cmtx, int ch) {
+void insert_at_cursor(TMatrix *tmtx, int ch) {
 	int i;
-	int len = strlen(cmtx->cursor_line->arr);
+	int len = strlen(tmtx->text_line->arr);
 
 	// resize arr if necessary
-	if(len >= cmtx->cursor_line->exp * BUF_SIZE - 1) {
-		cmtx->cursor_line->exp *= 2;
-		cmtx->cursor_line->arr = (char *)realloc(cmtx->cursor_line->arr, cmtx->cursor_line->exp * BUF_SIZE);
+	if(len >= tmtx->text_line->exp * BUF_SIZE - 1) {
+		tmtx->text_line->exp *= 2;
+		tmtx->text_line->arr = (char *)realloc(tmtx->text_line->arr, tmtx->text_line->exp * BUF_SIZE);
 	}
 
-	// shift all characters one ahead and add \0
-	for(i = len - 1; i >= cmtx->cursor_col; i--)
-		cmtx->cursor_line->arr[i + 1] = cmtx->cursor_line->arr[i];
-	cmtx->cursor_line->arr[len + 1] = '\0';
+	// shift all characters one ahead along with \0
+	for(i = len; i >= tmtx->cursor_col; i--)
+		tmtx->text_line->arr[i + 1] = tmtx->text_line->arr[i];
 
 	// add in character
-	cmtx->cursor_line->arr[cmtx->cursor_col] = ch;
-	cmtx->cursor_col++;
+	tmtx->text_line->arr[tmtx->cursor_col] = ch;
+	tmtx->cursor_col++;
 }
 
 // deletes character before cursor
-void delete_before_cursor(CMatrix *cmtx) {
+void delete_before_cursor(TMatrix *tmtx) {
 	int i;
 	// shift all characters one back (loop includes the \0)
-	for(i = cmtx->cursor_col - 1; cmtx->cursor_line->arr[i]; i++)
-		cmtx->cursor_line->arr[i] = cmtx->cursor_line->arr[i + 1];
-	cmtx->cursor_col--;
+	for(i = tmtx->cursor_col - 1; tmtx->text_line->arr[i]; i++)
+		tmtx->text_line->arr[i] = tmtx->text_line->arr[i + 1];
+	tmtx->cursor_col--;
 }
 
 // insert newline
-void insert_newline_at_cursor(CMatrix *cmtx) {
+void insert_newline_at_cursor(TMatrix *tmtx) {
 	// point where current line is to be broken
-	char *breakpoint = &(cmtx->cursor_line->arr[cmtx->cursor_col]);
+	char *breakpoint = &(tmtx->text_line->arr[tmtx->cursor_col]);
 
 	// create a new line and insert into linked list
 	Line *extra_line = new_line();
-	extra_line->next = cmtx->cursor_line->next;
-	if(cmtx->cursor_line->next)
-		cmtx->cursor_line->next->prev = extra_line;
-	extra_line->prev = cmtx->cursor_line;
-	cmtx->cursor_line->next = extra_line;
+	extra_line->next = tmtx->text_line->next;
+	if(tmtx->text_line->next)
+		tmtx->text_line->next->prev = extra_line;
+	extra_line->prev = tmtx->text_line;
+	tmtx->text_line->next = extra_line;
 
 	// make sure that the new line has enough space (account for the \0, hence using >= and not >) and then:
 	// copy over content and set \0 to override the content of the previous line
@@ -68,83 +67,102 @@ void insert_newline_at_cursor(CMatrix *cmtx) {
 	extra_line->arr = (char *)realloc(extra_line->arr, extra_line->exp * BUF_SIZE);
 	strcpy(extra_line->arr, breakpoint);
 	extra_line->arr[strlen(breakpoint)] = '\0';
-	cmtx->cursor_line->arr[cmtx->cursor_col] = '\0';
+	tmtx->text_line->arr[tmtx->cursor_col] = '\0';
 
 	// update tail if we need to
 	if(extra_line->next == NULL) {
-		cmtx->tail = extra_line;
+		tmtx->tail = extra_line;
 	}
 
 	// update cursor
-	cmtx->cursor_line = cmtx->cursor_line->next;
-	cmtx->cursor_line_int++;
-	cmtx->cursor_col = 0;
+	tmtx->text_line = tmtx->text_line->next;
+	tmtx->cursor_row++;
+	tmtx->cursor_col = 0;
 
-	if(cmtx->cursor_line_int - cmtx->y_offset > LINES - 1)
-		cmtx->y_offset++;
+	if(tmtx->cursor_row - tmtx->y_offset > LINES - 1)
+		tmtx->y_offset++;
 }
 
 // delete newline
-void delete_newline_at_cursor(CMatrix *cmtx) {
+void delete_newline_at_cursor(TMatrix *tmtx) {
 	// store this for moving cursor at the end
-	int prev_line_length = strlen(cmtx->cursor_line->prev->arr);
+	int prev_line_length = strlen(tmtx->text_line->prev->arr);
 
-	Line *temp = cmtx->cursor_line->prev;
+	Line *temp = tmtx->text_line->prev;
 	// concatenate this line to previous line
-	strcat(cmtx->cursor_line->prev->arr, cmtx->cursor_line->arr);
+	strcat(tmtx->text_line->prev->arr, tmtx->text_line->arr);
 
 	// update previous line to point next to next line
-	cmtx->cursor_line->prev->next = cmtx->cursor_line->next;
+	tmtx->text_line->prev->next = tmtx->text_line->next;
 
-	free(cmtx->cursor_line->arr);
-	free(cmtx->cursor_line);
+	free(tmtx->text_line->arr);
+	free(tmtx->text_line);
 
 	// update cursor
-	cmtx->cursor_line = temp;
-	cmtx->cursor_line_int--;
-	cmtx->cursor_col = prev_line_length;
+	tmtx->text_line = temp;
+	tmtx->cursor_row--;
+	tmtx->cursor_col = prev_line_length;
 
-	if(cmtx->cursor_line_int < cmtx->y_offset && cmtx->y_offset > 0)
-		cmtx->y_offset--;
+	if(tmtx->cursor_row < tmtx->y_offset && tmtx->y_offset > 0)
+		tmtx->y_offset--;
 }
 
 // move cursor up
-void move_cursor_up(CMatrix *cmtx) {
-	if(cmtx->cursor_col > strlen(cmtx->cursor_line->prev->arr))
-		cmtx->cursor_col = strlen(cmtx->cursor_line->prev->arr);
-	cmtx->cursor_line = cmtx->cursor_line->prev;
-	cmtx->cursor_line_int--;
-	if(cmtx->cursor_line_int < cmtx->y_offset) cmtx->y_offset--;
+void move_cursor_up(TMatrix *tmtx) {
+	if(tmtx->text_line->next == tmtx->head) return;
+	if(tmtx->cursor_col > strlen(tmtx->text_line->prev->arr))
+		tmtx->cursor_col = strlen(tmtx->text_line->prev->arr);
+	tmtx->text_line = tmtx->text_line->prev;
+	tmtx->cursor_row--;
+	if(tmtx->cursor_row < tmtx->y_offset) tmtx->y_offset--;
 }
 
 
 // move cursor down
-void move_cursor_down(CMatrix *cmtx) {
-	if(cmtx->cursor_col > strlen(cmtx->cursor_line->next->arr))
-		cmtx->cursor_col = strlen(cmtx->cursor_line->next->arr);
-	cmtx->cursor_line = cmtx->cursor_line->next;
-	cmtx->cursor_line_int++;
-	if(cmtx->cursor_line_int - cmtx->y_offset > LINES - 1)
-		cmtx->y_offset++;
+void move_cursor_down(TMatrix *tmtx) {
+	if(!tmtx->text_line->next) return;
+	if(tmtx->cursor_col > strlen(tmtx->text_line->next->arr))
+		tmtx->cursor_col = strlen(tmtx->text_line->next->arr);
+	tmtx->text_line = tmtx->text_line->next;
+	tmtx->cursor_row++;
+	if(tmtx->cursor_row - tmtx->y_offset > LINES - 1)
+		tmtx->y_offset++;
 }
 
-void move_cursor_to(CMatrix *cmtx, int row, int col) {
+
+void move_cursor_left(TMatrix *tmtx) {
+	if(tmtx->cursor_col > 0) {
+		tmtx->cursor_col--;
+	} else {
+	}
+}
+
+void move_cursor_right(TMatrix *tmtx) {
+	if(tmtx->cursor_col < strlen(tmtx->text_line->arr)) tmtx->cursor_col++;
+	if(tmtx->cursor_col > COLS) {
+		tmtx->cursor_col = 0;
+		tmtx->cursor_row++;
+	}
+}
+
+
+void move_cursor_to(TMatrix *tmtx, int row, int col) {
 	if(row < 0 || col < 0) return;
-	while(cmtx->cursor_line_int > row) {
-		cmtx->cursor_line_int--;
-		cmtx->cursor_line = cmtx->cursor_line->prev;
+	while(tmtx->cursor_row > row) {
+		tmtx->cursor_row--;
+		tmtx->text_line = tmtx->text_line->prev;
 	}
-	while(cmtx->cursor_line_int < row) {
-		cmtx->cursor_line_int++;
-		cmtx->cursor_line = cmtx->cursor_line->next;
+	while(tmtx->cursor_row < row) {
+		tmtx->cursor_row++;
+		tmtx->text_line = tmtx->text_line->next;
 	}
-	cmtx->cursor_col = col;
+	tmtx->cursor_col = col;
 }
 
 // clean up
-void finish(CMatrix *cmtx) {
+void finish(TMatrix *tmtx) {
 	// free data structure
-	Line *current = cmtx->head, *temp;
+	Line *current = tmtx->head, *temp;
 	while(current) {
 		temp = current->next;
 		free(current->arr);
@@ -155,18 +173,9 @@ void finish(CMatrix *cmtx) {
 	exit(0);
 }
 
-// this method allocates memory!
-Line *new_line() {
-	Line *l = (Line *)malloc(sizeof(Line));
-	l->next = l->prev = NULL;
-	l->exp = 1;
-	l->arr = (char *)malloc(sizeof(char) * BUF_SIZE);
-	l->arr[0] = '\0';
-	return l;
-}
 
-// initialize cmtx using contents of file
-int init_from_file(CMatrix *cmtx, char *filename) {
+// initialize tmtx using contents of file
+int init_from_file(TMatrix *tmtx, char *filename) {
 	Line *current;
 	int len;
 	char buf[BUF_SIZE];
@@ -175,10 +184,10 @@ int init_from_file(CMatrix *cmtx, char *filename) {
 		perror("open");
 		return EXIT_FAILURE;
 	}
-	cmtx->cursor_line_int = 0;
-	cmtx->cursor_col = 0;
-	cmtx->y_offset = 0;
-	cmtx->head = cmtx->cursor_line = current = cmtx->tail = new_line();
+	tmtx->cursor_row = 0;
+	tmtx->cursor_col = 0;
+	tmtx->y_offset = 0;
+	tmtx->head = tmtx->text_line = current = tmtx->tail = new_line();
 
 	while(fgets(buf, BUF_SIZE / 2, f)) {
 		len = strlen(buf);
@@ -197,19 +206,27 @@ int init_from_file(CMatrix *cmtx, char *filename) {
 		// otherwise continue
 	}
 
-	cmtx->tail = current->prev;
+	tmtx->tail = current->prev;
 	free(current->arr);
 	free(current);
-	cmtx->tail->next = NULL;
+	tmtx->tail->next = NULL;
 	fclose(f);
 	return EXIT_SUCCESS;
 }
 
-int init_blank(CMatrix *cmtx) {
-	cmtx->head = cmtx->cursor_line = cmtx->tail = new_line();
-	cmtx->cursor_line_int = 0;
-	cmtx->cursor_col = 0;
-	cmtx->y_offset = 0;
+int init_blank(TMatrix *tmtx) {
+	tmtx->head = tmtx->text_line = tmtx->tail = new_line();
+	tmtx->cursor_row = 0;
+	tmtx->cursor_col = 0;
+	tmtx->y_offset = 0;
 	return EXIT_SUCCESS;
+}
+
+void delete_behind_cursor(TMatrix *tmtx) {
+	if(tmtx->cursor_col == 0) {
+		delete_newline_at_cursor(tmtx);
+	} else {
+		delete_before_cursor(tmtx);
+	}
 }
 
