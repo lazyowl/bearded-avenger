@@ -1,8 +1,8 @@
 all:
-	gcc -c editor.c
-	gcc -c run.c
-	gcc -Wall run.o editor.o -lncurses
-	$(MAKE) -C testing/
+	gcc -c -Wall tmatrix.c
+	gcc -c -Wall smatrix.c
+	gcc -c -Wall run.c
+	gcc -Wall run.o tmatrix.o smatrix.o -lncurses
 
 clean:
 	rm -f a.out *.o

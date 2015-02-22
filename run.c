@@ -1,9 +1,18 @@
 #include <stdio.h>
-#include "editor.h"
+#include "tmatrix.h"
+#include "smatrix.h"
 
-int main(int argc, char **argv) {
+#define KEY_NEWLINE	13
+
+int main() {
 	int ch;
-	CMatrix matrix;
+	SMatrix matrix;
+	init_smatrix(&matrix);
+
+	TMatrix tmtx;
+	init_tmatrix(&tmtx);
+
+	matrix.tmtx = &tmtx;
 
 	initscr();	// initialize
 	keypad(stdscr, TRUE);	// extra keys
@@ -12,10 +21,6 @@ int main(int argc, char **argv) {
 	noecho();
 
 	// create matrix and first line
-	if(argc == 1)
-		init_blank(&matrix);
-	else
-		init_from_file(&matrix, argv[1]);
 	render(&matrix);
 
 	while(1) {
@@ -35,9 +40,6 @@ int main(int argc, char **argv) {
 				break;
 			case KEY_BACKSPACE:
 				delete_before_cursor(&matrix);
-				break;
-			case KEY_ESC:
-				finish(&matrix);
 				break;
 			case KEY_NEWLINE:
 				insert_newline_at_cursor(&matrix);

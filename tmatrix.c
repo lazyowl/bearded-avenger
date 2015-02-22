@@ -1,57 +1,45 @@
 #include "tmatrix.h"
 
-void insert_at(TMatrix *tmtx, int row, int col, int ch) {
+void insert(TMatrix *tmtx, int ch) {
 	int i = 0;
-	int len;
-	Line *current = tmtx->head;
-
-	while(i++ < row)
-		current = current->next;
-	len = strlen(current->arr);
+	int len = strlen(tmtx->logical_cursor_line->arr);
 
 	// resize arr if necessary
-	if(len >= current->exp * BUF_SIZE - 1) {
-		current->exp *= 2;
-		current->arr = (char *)realloc(current->arr, current->exp * BUF_SIZE);
+	if(len >= tmtx->logical_cursor_line->exp * BUF_SIZE - 1) {
+		tmtx->logical_cursor_line->exp *= 2;
+		tmtx->logical_cursor_line->arr = (char *)realloc(tmtx->logical_cursor_line->arr, tmtx->logical_cursor_line->exp * BUF_SIZE);
 	}
 
 	// shift all characters one ahead along with \0
-	for(i = len; i >= col; i--)
-		current->arr[i + 1] = current->arr[i];
+	for(i = len; i >= tmtx->logical_cursor_col; i--)
+		tmtx->logical_cursor_line->arr[i + 1] = tmtx->logical_cursor_line->arr[i];
 
 	// add in character
-	current->arr[col] = ch;
+	tmtx->logical_cursor_line->arr[tmtx->logical_cursor_col] = ch;
+	tmtx->logical_cursor_col++;
 }
 
-void delete_before(TMatrix *tmtx, int row, int col) {
+void delete(TMatrix *tmtx) {
 	int i;
-	Line *current = tmtx->head;
-
-	while(i++ < row)
-		current = current->next;
-
 	// shift all characters one back (loop includes the \0)
-	for(i = col - 1; current->arr[i]; i++)
-		current->arr[i] = current->arr[i + 1];
+
+	if(tmtx->logical_cursor_col == 0) return;
+	for(i = tmtx->logical_cursor_col - 1; tmtx->logical_cursor_line->arr[i]; i++)
+		tmtx->logical_cursor_line->arr[i] = tmtx->logical_cursor_line->arr[i + 1];
+	tmtx->logical_cursor_col--;
 }
 
-void insert_newline_at(TMatrix *tmtx, int row, int col) {
-	int i;
-	Line *current = tmtx->head;
-
-	while(i++ < row)
-		current = current->next;
-
+void insert_newline(TMatrix *tmtx) {
 	// point where current line is to be broken
-	char *breakpoint = &(current->arr[col]);
+	char *breakpoint = &(tmtx->logical_cursor_line->arr[tmtx->logical_cursor_col]);
 
 	// create a new line and insert into linked list
 	Line *extra_line = new_line();
-	extra_line->next = current->next;
-	if(current->next)
-		current->next->prev = extra_line;
-	extra_line->prev = current;
-	current->next = extra_line;
+	extra_line->next = tmtx->logical_cursor_line->next;
+	if(tmtx->logical_cursor_line->next)
+		tmtx->logical_cursor_line->next->prev = extra_line;
+	extra_line->prev = tmtx->logical_cursor_line;
+	tmtx->logical_cursor_line->next = extra_line;
 
 	// make sure that the new line has enough space (account for the \0, hence using >= and not >) and then:
 	// copy over content and set \0 to override the content of the previous line
@@ -60,33 +48,38 @@ void insert_newline_at(TMatrix *tmtx, int row, int col) {
 	extra_line->arr = (char *)realloc(extra_line->arr, extra_line->exp * BUF_SIZE);
 	strcpy(extra_line->arr, breakpoint);
 	extra_line->arr[strlen(breakpoint)] = '\0';
-	current->arr[col] = '\0';
+	tmtx->logical_cursor_line->arr[tmtx->logical_cursor_col] = '\0';
 
 	// update tail if we need to
 	if(extra_line->next == NULL) {
 		tmtx->tail = extra_line;
 	}
+	tmtx->logical_cursor_line = extra_line;
+	tmtx->logical_cursor_row++;
+	tmtx->logical_cursor_col = 0;
 }
 
-void delete_newline_at(TMatrix *tmtx, int row, int col) {
-	int i;
-	Line *current = tmtx->head;
-
-	while(i++ < row)
-		current = current->next;
-
+void delete_newline(TMatrix *tmtx) {
+	if(tmtx->logical_cursor_line == tmtx->head) return;
 	// store this for moving cursor at the end
-	int prev_line_length = strlen(current->prev->arr);
+	int prev_line_length = strlen(tmtx->logical_cursor_line->prev->arr);
 
-	Line *temp = current->prev;
+	Line *temp = tmtx->logical_cursor_line->prev;
 	// concatenate this line to previous line
-	strcat(current->prev->arr, current->arr);
+	while(strlen(temp->arr) + strlen(tmtx->logical_cursor_line->arr) >= temp->exp * BUF_SIZE)
+		temp->exp *= 2;
+	temp->arr = (char *)realloc(temp->arr, temp->exp * BUF_SIZE);
+	strcat(tmtx->logical_cursor_line->prev->arr, tmtx->logical_cursor_line->arr);
 
 	// update previous line to point next to next line
-	current->prev->next = current->next;
+	tmtx->logical_cursor_line->prev->next = tmtx->logical_cursor_line->next;
 
-	free(current->arr);
-	free(current);
+	free(tmtx->logical_cursor_line->arr);
+	free(tmtx->logical_cursor_line);
+
+	tmtx->logical_cursor_line = temp;
+	tmtx->logical_cursor_row--;
+	tmtx->logical_cursor_col = prev_line_length;
 }
 
 // this method allocates memory!
@@ -97,4 +90,50 @@ Line *new_line() {
 	l->arr = (char *)malloc(sizeof(char) * BUF_SIZE);
 	l->arr[0] = '\0';
 	return l;
+}
+
+
+void init_tmatrix(TMatrix *tmtx) {
+	tmtx->head = tmtx->logical_cursor_line = tmtx->tail = new_line();
+	tmtx->logical_cursor_col = tmtx->logical_cursor_row = 0;
+}
+
+// clean up
+void destroy_tmatrix(TMatrix *tmtx) {
+	// free data structure
+	Line *current = tmtx->head, *temp;
+	while(current) {
+		temp = current->next;
+		free(current->arr);
+		free(current);
+		current = temp;
+	}
+}
+
+void move_logical_cursor_up(TMatrix *tmtx) {
+	if(tmtx->logical_cursor_line != tmtx->head) {
+		tmtx->logical_cursor_line = tmtx->logical_cursor_line->prev;
+		tmtx->logical_cursor_row--;
+	}
+
+	if(strlen(tmtx->logical_cursor_line->arr) < tmtx->logical_cursor_col) {
+		tmtx->logical_cursor_col = strlen(tmtx->logical_cursor_line->arr);
+	}
+}
+void move_logical_cursor_down(TMatrix *tmtx) {
+	if(tmtx->logical_cursor_line->next) {
+		tmtx->logical_cursor_line = tmtx->logical_cursor_line->next;
+		tmtx->logical_cursor_row++;
+	}
+
+	if(strlen(tmtx->logical_cursor_line->arr) < tmtx->logical_cursor_col)
+		tmtx->logical_cursor_col = strlen(tmtx->logical_cursor_line->arr);
+}
+void move_logical_cursor_left(TMatrix *tmtx) {
+	if(tmtx->logical_cursor_col > 0)
+		tmtx->logical_cursor_col--;
+}
+void move_logical_cursor_right(TMatrix *tmtx) {
+	if(tmtx->logical_cursor_col < strlen(tmtx->logical_cursor_line->arr))
+		tmtx->logical_cursor_col++;
 }

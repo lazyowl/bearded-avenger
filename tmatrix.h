@@ -1,3 +1,6 @@
+#ifndef __TMATRIX
+#define __TMATRIX
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ncurses.h>
@@ -20,11 +23,25 @@ typedef struct Line {
 typedef struct {
 	Line *head;
 	Line *tail;
+	Line *logical_cursor_line;
+	int logical_cursor_row;
+	int logical_cursor_col;
 } TMatrix;
 
 
-void insert_at(TMatrix *, int, int);
-void delete_before(TMatrix *, int, int);
-void insert_newline_at(TMatrix *, int, int);
-void delete_newline_at(TMatrix *, int, int);
+void insert(TMatrix *, int);
+void delete(TMatrix *);
+void insert_newline(TMatrix *);
+void delete_newline(TMatrix *);
+
+void move_logical_cursor_up(TMatrix *);
+void move_logical_cursor_down(TMatrix *);
+void move_logical_cursor_left(TMatrix *);
+void move_logical_cursor_right(TMatrix *);
+
 Line *new_line();
+
+void init_tmatrix(TMatrix *);
+void destroy_tmatrix(TMatrix *);
+
+#endif
