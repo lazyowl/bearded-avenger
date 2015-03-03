@@ -12,43 +12,43 @@ int main() {
 	TMatrix tmtx;
 	init_tmatrix(&tmtx);
 
-	matrix.tmtx = &tmtx;
-
 	initscr();	// initialize
 	keypad(stdscr, TRUE);	// extra keys
 	cbreak();
 	nonl();
 	noecho();
 
-	// create matrix and first line
-	render(&matrix);
+	render(&matrix, &tmtx);
 
 	while(1) {
 		ch = wgetch(stdscr);
 		switch(ch) {
 			case KEY_LEFT:
-				move_cursor_left(&matrix);
+				move_logical_cursor_left(&tmtx);
 				break;
 			case KEY_RIGHT:
-				move_cursor_right(&matrix);
+				move_logical_cursor_right(&tmtx);
 				break;
 			case KEY_UP:
-				move_cursor_up(&matrix);
+				move_logical_cursor_up(&tmtx);
 				break;
 			case KEY_DOWN:
-				move_cursor_down(&matrix);
+				move_logical_cursor_down(&tmtx);
 				break;
 			case KEY_BACKSPACE:
-				delete_before_cursor(&matrix);
+				if(tmtx.logical_cursor_col == 0)
+					delete_newline(&tmtx);
+				else
+					delete(&tmtx);
 				break;
 			case KEY_NEWLINE:
-				insert_newline_at_cursor(&matrix);
+				insert_newline(&tmtx);
 				break;
 			default:
-				insert_at_cursor(&matrix, ch);
+				insert(&tmtx, ch);
 				break;
 		}
-		render(&matrix);
+		render(&matrix, &tmtx);
 	}
 	endwin();
 	return 0;
