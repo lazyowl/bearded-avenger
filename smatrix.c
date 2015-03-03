@@ -29,6 +29,9 @@ void render(SMatrix *smtx) {
 	if(smtx->screen_cursor_row - smtx->y_offset >= LINES) {
 		smtx->y_offset += num_screen_lines;
 	}
+	if(smtx->screen_cursor_row < smtx->y_offset) {
+		smtx->y_offset--;
+	}
 
 	iter = smtx->tmtx->head;
 	for(i = 0; i < smtx->y_offset; i++) {
@@ -41,7 +44,7 @@ void render(SMatrix *smtx) {
 	}
 	// the cursor needs to be positioned relative to the screen, not the actual text
 	// in other words, we need to map the line number in the text (cursor_line_int) to a screen line number
-	move(smtx->screen_cursor_row, smtx->screen_cursor_col);
+	move(smtx->screen_cursor_row - smtx->y_offset, smtx->screen_cursor_col);
 	refresh();
 }
 
