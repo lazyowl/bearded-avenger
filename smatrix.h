@@ -1,6 +1,6 @@
+#ifndef __SMATRIX
+#define __SMATRIX
 #include "tmatrix.h"
-
-#define MAX_LINES	100
 
 typedef struct {
 	int screen_cursor_row;
@@ -13,3 +13,5 @@ void render(SMatrix *, TMatrix *);
 int render_line(int, char *);
 void init_smatrix(SMatrix *);
 void destroy_smatrix(SMatrix *);
+
+#endif

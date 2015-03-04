@@ -1,6 +1,5 @@
 #include "smatrix.h"
 
-#define MAX	20
 #define CEIL(a, b) (((a) / (b)) + (((a) % (b)) > 0 ? 1 : 0))
 
 // TODO probably a more efficient way of doing this
